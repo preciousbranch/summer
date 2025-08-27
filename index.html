@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>夏季課題 確認テスト（単一HTML）</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+  :root{
+    --fg:#111;--bg:#fff;--muted:#666;--acc:#0a7;--danger:#c33;--ok:#0a7;--card:#f6f7f8;
+    --btn:#111;--btnfg:#fff;
+  }
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font:16px/1.6 -apple-system,system-ui,"Segoe UI",Roboto,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;}
+  header{position:sticky;top:0;background:var(--bg);z-index:20;border-bottom:1px solid #e5e7eb}
+  .wrap{max-width:980px;margin:0 auto;padding:12px 16px}
+  h1{font-size:20px;margin:6px 0 8px 0}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .row > *{margin:4px 0}
+  select,button,input[type="checkbox"]{font-size:16px}
+  button{background:var(--btn);color:var(--btnfg);border:none;border-radius:10px;padding:10px 14px}
+  button.ghost{background:#f0f2f3;color:#111}
+  button:disabled{opacity:.5}
+  label{font-size:14px;color:#222;display:flex;align-items:center;gap:6px;padding:2px 6px;border-radius:8px;background:#f6f7f8}
+  #qcard{background:var(--card);border-radius:16px;padding:14px;margin-top:10px}
+  .qhead{display:flex;justify-content:space-between;gap:8px;align-items:center}
+  .qidx{font-weight:600}
+  .subject{font-size:12px;color:#555}
+  .qtext{font-size:18px;margin:10px 0}
+  .choices{display:grid;gap:8px}
+  .choice{border:1px solid #ddd;border-radius:12px;padding:10px;background:#fff}
+  .choice button{all:unset;display:block;width:100%;padding:8px 10px;border-radius:10px;cursor:pointer}
+  .choice.correct{border-color:#4ade80}
+  .choice.wrong{border-color:#fca5a5}
+  .mark{font-weight:700;font-size:18px;margin-left:6px}
+  .mark.ok{color:var(--ok)}
+  .mark.ng{color:var(--danger)}
+  .exp{margin-top:10px;font-size:15px;background:#fff;border-radius:12px;padding:10px;border:1px solid #e5e7eb}
+  .controls{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+  .muted{color:var(--muted);font-size:12px}
+  .imgwrap{display:flex;justify-content:center;margin:10px 0}
+  .imgwrap img{max-width:100%;height:auto;border-radius:10px;border:1px solid #e5e7eb}
+  details {background:#f7f7f8;border-radius:12px;padding:8px 10px;border:1px solid #e5e7eb;margin-top:10px}
+  summary {cursor:pointer;font-weight:600}
+  .footer{color:#666;font-size:12px;margin:20px 0 40px}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#334155;font-size:12px}
+  .tag{padding:2px 8px;border:1px solid #d1d5db;border-radius:999px;font-size:12px;color:#374151;background:#fff}
+  .bar{height:8px;border-radius:999px;background:#e5e7eb;overflow:hidden}
+  .bar > span{display:block;height:100%;background:linear-gradient(90deg,#34d399,#10b981)}
+  /* blank input */
+  #blankwrap{display:flex;gap:8px;align-items:center;margin:8px 0}
+  #blankInput{flex:1;border:1px solid #d1d5db;border-radius:10px;padding:10px;font-size:16px;background:#fff}
+  #blankInput.correct{border-color:#4ade80}
+  #blankInput.wrong{border-color:#fca5a5}
+  @media (min-width:700px){
+    .row{gap:12px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>夏季課題 確認テスト</h1>
+    <div class="row">
+      <label><input type="checkbox" id="shuffle"> シャッフル</label>
+      <label><input type="checkbox" id="memorize"> 暗記モード（前回×のみ）</label>
+      <label><input type="checkbox" id="persist"> スコア保存</label>
+      <label><input type="checkbox" id="pwa"> オフライン対応（β）</label>
+      <select id="mode">
+        <option value="learn">学習モード</option>
+        <option value="exam">試験モード</option>
+      </select>
+      <button id="restart" class="ghost">最初から</button>
+      <input type="file" id="csv" accept=".csv,.tsv,text/csv,text/tab-separated-values" style="display:none">
+      <button id="importBtn" class="ghost">CSV/TSV読み込み</button>
+    </div>
+    <div class="row" id="statusRow">
+      <span class="pill" id="countInfo"></span>
+      <span class="tag" id="scoreInfo">–</span>
+      <div style="flex:1"></div>
+      <span class="muted">データ定義は本ファイル内 <code>QUESTIONS</code> を編集（穴埋め対応）</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="qcard" hidden>
+    <div class="qhead">
+      <div><span class="qidx" id="qidx">Q1</span> <span class="subject" id="subject"></span></div>
+      <div class="muted"><span id="progress"></span></div>
+    </div>
+    <div class="qtext" id="qtext"></div>
+    <div class="imgwrap" id="imgwrap" hidden><img id="qimg" alt=""></div>
+
+    <!-- multiple-choice -->
+    <div class="choices" id="choices"></div>
+    <!-- fill-in-the-blank -->
+    <div id="blankwrap" hidden>
+      <input id="blankInput" type="text" inputmode="text" autocomplete="off" placeholder="解答を入力">
+      <button id="blankSubmit">解答する</button>
+      <span id="blankMark" class="mark"></span>
+    </div>
+
+    <div class="exp" id="exp"></div>
+    <div class="controls">
+      <button id="prevBtn" class="ghost">← 前へ</button>
+      <div style="flex:1"></div>
+      <button id="nextBtn">次へ →</button>
+    </div>
+  </div>
+
+  <details>
+    <summary>CSV/TSV 取り込み（列ヘッダ）</summary>
+    <ul>
+      <li><code>type</code>：<b>mc</b>（選択式／既定）または <b>blank</b>（穴埋め式）</li>
+      <li><code>subject</code>：科目</li>
+      <li><code>question</code>：問題文（改行は <code>&lt;br&gt;</code>）</li>
+      <li><code>choices</code>：選択肢（<code>｜</code> 区切り、<b>mcのみ使用</b>）</li>
+      <li><code>answer</code>：mc=正解番号（0始まり）／blank=正答文字列（複数可、<code>｜</code> で区切り）</li>
+      <li><code>explanation</code>：解説</li>
+      <li><code>image</code>：画像URL（任意）</li>
+    </ul>
+  </details>
+
+  <div class="footer">
+    注意：本HTMLにはサンプル問題のみ同梱。完全版はCSVで一括投入してください。
+  </div>
+</main>
+
+<script>
+/* =====================
+   データ定義：QUESTIONS
+   type: "mc"（選択式／既定）, "blank"（穴埋め）
+   ===================== */
+const QUESTIONS = [
+  // --- サンプル：選択式 ---
+  {type:"mc",subject:"国語表現法", question:"英語に『敬語の文法』といったものはない。（　）英語にも丁寧な表現はある。最も適切な接続語は？", choices:["しかし","つまり","そして","だから","ただし"], answer:0, explanation:"対立・逆接の関係なので「しかし」が適切。"},
+  // --- サンプル：穴埋め式（blank）---
+  {type:"blank",subject:"生物学（穴埋め）", question:"ヒトの染色体数は（　）本。", answers:["46","４６","46本","４６本"], explanation:"体細胞は46本（22対＋性染色体）。数値のみでも可。"},
+  // 他のサンプル
+  {type:"mc",subject:"情報リテラシー", question:"ファイルとは、PC内の音楽や写真、映像・文書などの（　）の記録物のことである。", choices:["情報","容器","場所","拡張子"], answer:0, explanation:"ファイル＝情報の記録物。"},
+];
+
+const CSV_TEMPLATE = `type,subject,question,choices,answer,explanation,image
+mc,国語表現法,英語に『敬語の文法』はない。（　）英語にも丁寧表現はある。,しかし｜つまり｜そして｜だから｜ただし,0,逆接関係なので「しかし」,
+blank,生物学（穴埋め）,ヒトの染色体数は（　）本。,,46｜46本｜４６｜４６本,体細胞は46本（22対＋性染色体）,`;
+
+/* ============= ユーティリティ ============= */
+const byId = (id)=>document.getElementById(id);
+const state = {
+  order: [], idx: 0, mode: "learn",
+  answered: {}, // qIndex -> {selected? , input? , correct}
+  wrongIds: new Set(),
+  persist:false, memorize:false, shuffle:false,
+  swActive:false
+};
+const STORAGE_KEY="summerQuizProgress_v2";
+
+function shuffleArray(a){
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+function saveIfNeeded(){
+  if(!state.persist) return;
+  const best = computeScore().pct;
+  const payload = {
+    wrong:[...state.wrongIds],
+    best,
+    timestamp: Date.now()
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+}
+function loadPersist(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return null;
+  try{ return JSON.parse(raw); }catch(e){ return null; }
+}
+
+/* 正規化（全角/半角・大小・空白除去） */
+function normalizeAns(s){
+  return String(s||"")
+    .normalize('NFKC')
+    .replace(/\s+/g,'')        // 空白全除去
+    .toLowerCase();
+}
+
+/* ============= 初期化 ============= */
+function buildOrder(){
+  let indices = QUESTIONS.map((_,i)=>i);
+  if(state.memorize){
+    const saved = loadPersist();
+    const wrong = saved?.wrong ?? [];
+    indices = indices.filter(i=>wrong.includes(i));
+    if(indices.length===0){ indices = QUESTIONS.map((_,i)=>i); }
+  }
+  if(state.shuffle) shuffleArray(indices);
+  state.order = indices;
+  state.idx = 0;
+}
+
+function computeScore(){
+  const total = state.order.length;
+  let correct = 0;
+  for(const k in state.answered){
+    if(state.answered[k]?.correct) correct++;
+  }
+  const pct = total ? Math.round(100*correct/total) : 0;
+  return {correct,total,pct};
+}
+
+function renderStatus(){
+  const {correct,total,pct} = computeScore();
+  byId("countInfo").textContent = `問題数: ${state.order.length} 問`;
+  byId("scoreInfo").textContent = (state.mode==="exam")
+    ? `スコア: ${correct}/${total}（${pct}%）`
+    : `学習モード`;
+  byId("progress").textContent = `${state.idx+1}/${state.order.length}`;
+}
+
+function renderCard(){
+  const qIndex = state.order[state.idx];
+  const q = QUESTIONS[qIndex];
+  if(!q){ byId("qcard").hidden = true; return; }
+  byId("qcard").hidden = false;
+  byId("qidx").textContent = `Q${state.idx+1}`;
+  byId("subject").textContent = q.subject || "";
+  byId("qtext").innerHTML = q.question;
+  // 画像
+  if(q.image){
+    byId("imgwrap").hidden=false;
+    const img = byId("qimg");
+    img.src = q.image;
+    img.alt = q.subject || "image";
+  }else{
+    byId("imgwrap").hidden=true;
+    byId("qimg").removeAttribute("src");
+  }
+
+  // multiple-choice or blank
+  const ctn = byId("choices");
+  const bw = byId("blankwrap");
+  const bi = byId("blankInput");
+  const bm = byId("blankMark");
+  ctn.innerHTML = "";
+  bm.textContent = "";
+  bi.value = "";
+  bi.classList.remove("correct","wrong");
+  if(q.type==="blank"){
+    ctn.hidden = true;
+    bw.hidden = false;
+  }else{
+    ctn.hidden = false;
+    bw.hidden = true;
+    (q.choices||[]).forEach((c, i)=>{
+      const div = document.createElement("div");
+      div.className = "choice";
+      const btn = document.createElement("button");
+      btn.innerHTML = `${String.fromCharCode(65+i)}. ${c}`;
+      btn.addEventListener("click", ()=>selectChoice(i));
+      div.appendChild(btn);
+      ctn.appendChild(div);
+    });
+  }
+
+  // 解説
+  const ans = state.answered[state.idx];
+  if(state.mode==="learn"){
+    byId("exp").innerHTML = `解説：${q.explanation || "—"}`;
+  }else{
+    byId("exp").innerHTML = ans ? `解説：${q.explanation || "—"}` : `解説：—（選択/入力すると表示）`;
+  }
+  highlightSelection();
+  renderStatus();
+  byId("prevBtn").disabled = state.idx===0;
+  byId("nextBtn").disabled = state.idx>=state.order.length-1;
+}
+
+function selectChoice(i){
+  const qIndex = state.order[state.idx];
+  const q = QUESTIONS[qIndex];
+  const correct = (i===q.answer);
+  state.answered[state.idx] = {selected:i, correct};
+  if(!correct){ state.wrongIds.add(qIndex); } else { state.wrongIds.delete(qIndex); }
+  highlightSelection();
+  byId("exp").innerHTML = `解説：${q.explanation || "—"}`;
+  saveIfNeeded();
+}
+
+function submitBlank(){
+  const qIndex = state.order[state.idx];
+  const q = QUESTIONS[qIndex];
+  const input = byId("blankInput").value;
+  const norm = normalizeAns(input);
+  const answers = (q.answers||[]).map(normalizeAns);
+  const correct = answers.includes(norm);
+  state.answered[state.idx] = {input, correct};
+  if(!correct){ state.wrongIds.add(qIndex); } else { state.wrongIds.delete(qIndex); }
+  // 表示
+  const bm = byId("blankMark");
+  bm.className = "mark " + (correct ? "ok":"ng");
+  bm.textContent = correct ? "◯" : "×";
+  const bi = byId("blankInput");
+  bi.classList.toggle("correct", correct);
+  bi.classList.toggle("wrong", !correct);
+  byId("exp").innerHTML = `解説：${q.explanation || "—"}`;
+  saveIfNeeded();
+}
+
+function highlightSelection(){
+  const qIndex = state.order[state.idx];
+  const q = QUESTIONS[qIndex];
+  const ans = state.answered[state.idx];
+  if(q.type==="blank"){
+    // handled in submitBlank
+  }else{
+    const children = [...byId("choices").children];
+    children.forEach((div, i)=>{
+      div.classList.remove("correct","wrong");
+      div.querySelector(".mark")?.remove();
+      if(!ans) return;
+      const mark = document.createElement("span");
+      mark.className = "mark " + (i===q.answer ? "ok":"ng");
+      mark.textContent = (i===q.answer) ? "◯" : "";
+      if(i===ans.selected){
+        if(ans.correct){ div.classList.add("correct"); } else { div.classList.add("wrong"); }
+      }
+      div.appendChild(mark);
+    });
+  }
+  // スコアバー
+  const {pct} = computeScore();
+  if(!byId("scoreBar")){
+    const bar = document.createElement("div"); bar.className="bar"; bar.id="scoreBar";
+    const span = document.createElement("span"); span.style.width=pct+"%"; bar.appendChild(span);
+    byId("statusRow").appendChild(bar);
+  }else{
+    byId("scoreBar").firstElementChild.style.width = pct+"%";
+  }
+}
+
+/* ============= PWA (Blob SW) ============= */
+async function ensureSW(active){
+  if(!('serviceWorker' in navigator)) return;
+  if(active){
+    if(state.swActive) return;
+    const code = `
+      const CACHE='quiz-cache-v1';
+      self.addEventListener('install',e=>{
+        e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./'])));
+        self.skipWaiting();
+      });
+      self.addEventListener('activate',e=>self.clients.claim());
+      self.addEventListener('fetch',e=>{
+        const url=new URL(e.request.url);
+        if(url.origin===location.origin){
+          e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{
+            const copy=res.clone();
+            caches.open(CACHE).then(c=>c.put(e.request,copy));
+            return res;
+          }).catch(()=>caches.match('./'))));
+        }
+      });
+    `;
+    const blob = new Blob([code],{type:'text/javascript'});
+    const swUrl = URL.createObjectURL(blob);
+    try{
+      await navigator.serviceWorker.register(swUrl);
+      state.swActive = true;
+    }catch(e){ console.warn(e); }
+  }else{
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for(const r of regs){ await r.unregister(); }
+    state.swActive = false;
+  }
+}
+
+/* ============= CSV 取り込み ============= */
+function parseCSV(text){
+  const isTSV = text.split('\n')[0].includes('\t') || (!text.includes(','));
+  const rows = text.split(/\r?\n/).filter(l=>l.trim().length);
+  const sep = isTSV ? '\t' : ',';
+  const head = rows[0].split(sep).map(s=>s.trim());
+  const idx = (name)=> head.indexOf(name);
+  const t = idx('type'), s = idx('subject'), q = idx('question'), c = idx('choices'), a = idx('answer'), e = idx('explanation'), im = idx('image');
+  const list = [];
+  for(let i=1;i<rows.length;i++){
+    const cols = rows[i].split(sep);
+    if(!cols[q]) continue;
+    const type = (cols[t]||"mc").trim().toLowerCase();
+    const base = {
+      type,
+      subject: (cols[s]||"").trim(),
+      question: (cols[q]||"").trim(),
+      explanation: (cols[e]||"").trim(),
+      image: ((cols[im]||"").trim() || undefined)
+    };
+    if(type==="blank"){
+      const ansText = (cols[a]||"").trim();
+      const answers = ansText.split('｜').map(x=>x.trim()).filter(Boolean);
+      if(answers.length===0) continue;
+      base.answers = answers;
+      list.push(base);
+    }else{ // mc
+      const choices = (cols[c]||"").split('｜').map(x=>x.trim()).filter(Boolean);
+      const ansIdx = Number((cols[a]||"0").trim()||0);
+      if(choices.length<2) continue;
+      base.choices = choices;
+      base.answer = ansIdx;
+      list.push(base);
+    }
+  }
+  return list;
+}
+
+/* ============= ナビゲーション ============= */
+function next(){ if(state.idx<state.order.length-1){ state.idx++; renderCard(); } }
+function prev(){ if(state.idx>0){ state.idx--; renderCard(); } }
+function restart(){
+  state.answered = {};
+  buildOrder();
+  renderCard();
+}
+
+function init(){
+  // UI要素に状態を反映
+  const saved = loadPersist();
+  if(saved){ state.memorize = true; byId("memorize").checked = true; }
+  byId("mode").value = "learn";
+  state.mode = "learn";
+
+  buildOrder();
+  renderCard();
+  // イベント
+  byId("nextBtn").onclick = next;
+  byId("prevBtn").onclick = prev;
+  byId("restart").onclick = restart;
+  byId("mode").onchange = (e)=>{ state.mode = e.target.value; renderCard(); };
+  byId("shuffle").onchange = (e)=>{ state.shuffle = e.target.checked; restart(); };
+  byId("memorize").onchange = (e)=>{ state.memorize = e.target.checked; restart(); };
+  byId("persist").onchange = (e)=>{ state.persist = e.target.checked; saveIfNeeded(); };
+  byId("pwa").onchange = (e)=>{ ensureSW(e.target.checked); };
+  byId("importBtn").onclick = ()=>byId("csv").click();
+  byId("csv").addEventListener('change', (ev)=>{
+    const file = ev.target.files?.[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const list = parseCSV(String(reader.result));
+        if(list.length){
+          QUESTIONS.length = 0;
+          QUESTIONS.push(...list);
+          restart();
+          alert(`取込完了：${list.length}問`);
+        }else{
+          alert('データ行が見つかりません。ヘッダ（type,subject,question,choices,answer,explanation,image）と区切り（, または \\t）をご確認ください。choicesは ｜ 区切り。');
+        }
+      }catch(err){
+        alert('読み込みに失敗しました: '+err);
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  });
+
+  byId("blankSubmit").onclick = submitBlank;
+  byId("blankInput").addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ submitBlank(); }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
